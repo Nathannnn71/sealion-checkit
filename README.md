@@ -1,9 +1,10 @@
-Checkit ✓ (Sealion Scribe)
+##Checkit ✓ (Sealion Scribe)
 
 Checkit is a single-page web app that helps teachers create essay assignments and review submissions with an Essay Checker experience using SEA-LION AI Singapore Model which supported multiple ASEAN countries languages (English, Bahasa Melayu, Thai etc.)
 Built with React + TypeScript + Vite, styled with Tailwind + shadcn/ui, and deployed to AWS S3 via a CI/CD pipeline.
 
 ✨ What It Does
+
 📘 Assignments
 
 Create and manage essay assignments on the Dashboard
