@@ -1,6 +1,7 @@
 
 
 # ✅ Checkit (Sealion Scribe)
+http://sealion-checkit-website.s3-website-us-east-1.amazonaws.com/
 
 **Checkit** is a single-page web app that helps teachers **create essay assignments** and **review submissions** with an **Essay Checker experience powered by SEA-LION AI (Singapore Model)**.
 Supports multiple ASEAN languages: **English, Bahasa Melayu, Thai, and more.**
