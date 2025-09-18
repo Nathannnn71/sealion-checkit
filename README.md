@@ -14,14 +14,14 @@ Supports multiple ASEAN languages: **English, Bahasa Melayu, Thai, and more.**
 
 1. Login using your custom email and password.
    - Alternatively, you can link your Google/Facebook Accounts
-   - Do not that these login configurations are NOT saved
+   - Do not that these login configurations are **NOT** saved
   
 2. Select a pre-existing assignment.
    - You can create new assignments by clicking the "Add Assignment" button
 
 4. You may do 1 of 2 things:
-   (a) Click a student profile to access their essay and feedback.
-   (b) Upload an essay
+   - Click a student profile to access their essay and feedback.
+   - Upload an essay
 
 5. Click the "Analyze Essay" button to start marking essays!
 
