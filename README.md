@@ -22,6 +22,7 @@ Supports multiple ASEAN languages: **English, Bahasa Melayu, Thai, and more.**
 4. You may do 1 of 2 things:
    - Click a student profile to access their essay and feedback.
    - Upload an essay
+   - Create a new student profile by inserting their academic credentials (Student Name & ID)
 
 5. Click the "Analyze Essay" button to start marking essays!
 
