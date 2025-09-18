@@ -6,9 +6,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Home, Globe, Settings, User, Upload, Check, X, Plus, FileText, UserPlus, Trash2 } from "lucide-react";
+import { Home, Upload, Check, X, Plus, FileText, UserPlus, Trash2 } from "lucide-react";
 import DocumentUpload from "@/components/DocumentUpload";
 import { useI18n } from "@/lib/i18n";
+import HeaderBar from "@/components/HeaderBar";
 
 interface Student {
   id: string;
@@ -164,20 +165,7 @@ const Assignment = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Home className="w-6 h-6 cursor-pointer" onClick={() => navigate('/dashboard')} />
-            <h1 className="text-xl font-semibold">Checkit ✓</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Globe className="w-5 h-5" />
-            <Settings className="w-5 h-5" />
-            <span className="text-sm">dinoTeacher</span>
-            <User className="w-5 h-5" />
-          </div>
-        </div>
-      </header>
+      <HeaderBar />
 
       {/* Main Content */}
       <main className="p-6">
