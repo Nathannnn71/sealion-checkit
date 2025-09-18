@@ -5,20 +5,29 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
+      - echo "Node: $(node -v) | NPM: $(npm -v)"
       - echo Installing dependencies...
-      - cd sealion-scribe
-      - npm install
+      - |
+        if [ -f package-lock.json ]; then
+          npm ci --legacy-peer-deps
+        else
+          npm install --legacy-peer-deps
+        fi
   build:
     commands:
-      - echo Building the app...
-      - cd sealion-scribe
+      - echo Building the React app...
       - npm run build
   post_build:
     commands:
-      - echo Build completed on `date`
+      - echo "Build completed on $(date)"
 
 artifacts:
   files:
     - '**/*'
-  base-directory: sealion-scribe/dist
+  base-directory: dist
   discard-paths: no
+
+cache:
+  paths:
+    - /root/.npm/**/*
+
