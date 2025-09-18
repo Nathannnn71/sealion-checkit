@@ -1,108 +1,113 @@
-# Welcome to your Lovable project
+Checkit ✓ (Sealion Scribe)
 
-## Project info
+Checkit is a single-page web app that helps teachers create essay assignments and review submissions with an Essay Checker experience using SEA-LION Singapore AI Model that supported multiple ASEAN countries lamguages (English, Bahasa Melayu, Thai etc.)
+Built with React + TypeScript + Vite, styled with Tailwind + shadcn/ui, and deployed to AWS S3 via a CI/CD pipeline.
 
-**URL**: https://lovable.dev/projects/caf0ba19-6606-450f-ae3e-1d5d385ffaf1
+✨ What It Does
+📘 Assignments
 
-## How can I edit this code?
+Create and manage essay assignments on the Dashboard
 
-There are several ways of editing your application.
+Open an assignment to view or collect student work
 
-**Use Lovable**
+📝 Essay Checker (Core Feature)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/caf0ba19-6606-450f-ae3e-1d5d385ffaf1) and start prompting.
+Paste essay text or upload a document (via DocumentUpload)
 
-Changes made via Lovable will be committed automatically to this repo.
+Preview extracted text before processing
 
-**Use your preferred IDE**
+Run analysis → structured feedback on clarity, grammar/style, suggestions
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Copy feedback or return to re-edit text
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Analysis is pluggable:
 
-Follow these steps:
+Connect to your own HTTP API
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Or use a Supabase Edge Function (analyze-essay)
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+🧭 Header UX
 
-# Step 3: Install the necessary dependencies.
-npm i
+Notifications dropdown: sample items, “Mark all read,” “Clear”
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Settings dropdown: Help Center, Contact Us (placeholders)
+
+Profile dropdown: avatar upload, edit username, logout
+
+Profile persisted in localStorage (user_profile)
+
+💾 Persistence (Client-only by default)
+
+Assignments → localStorage["assignments"]
+
+Per-assignment student data → localStorage["assignment_students_<id>"]
+
+Profile (avatar + username) → localStorage["user_profile"]
+
+🔍 How the Essay Checker Works
+
+Input
+
+Users paste text or upload a file via the UI
+
+Text extracted client-side when possible, shown for confirmation
+
+Analysis
+
+On “Check,” text sent to a pluggable handler
+
+Options:
+
+Custom API endpoint
+
+Supabase Edge Function (supabase/functions/analyze-essay)
+
+UI stays unchanged regardless of backend
+
+Output
+
+Feedback rendered into clear sections with actionable tips
+
+Users can copy feedback for reuse/revision
+
+Privacy
+
+All inputs remain in-browser unless backend is wired
+
+With backend: only essay text + minimal context are sent
+
+🏗 Architecture & Extensibility
+Frontend
+
+React 18 + TypeScript + Vite
+
+TailwindCSS + shadcn/ui
+
+React Router (SPA routing)
+
+TanStack Query (future data fetching)
+
+
+⚡ Run Locally (Windows)
+# From project root
+npm install
 npm run dev
-```
+# Open URL printed (e.g. http://localhost:5173)
 
-**Edit a file directly in GitHub**
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Build & Preview
 
-**Use GitHub Codespaces**
+npm run build
+npm run preview
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+🚀 Deploy (High Level)
 
-## What technologies are used for this project?
+CI/CD: GitHub → AWS CodePipeline → CodeBuild → Amazon S3
 
-This project is built with:
+Hosting: S3 Static Website Hosting serves built SPA (dist)
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
 
-## How can I deploy this project?
 
-Simply open [Lovable](https://lovable.dev/projects/caf0ba19-6606-450f-ae3e-1d5d385ffaf1) and click on Share -> Publish.
+📄 License
 
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
-
----
-
-## Document Upload & Parsing Feature
-
-Supported (client-side): PDF, DOCX, TXT. Implemented in `src/lib/parseDocument.ts` using `pdfjs-dist` and `mammoth` with a reusable UI component `src/components/DocumentUpload.tsx`.
-
-Workflow:
-1. Upload in Assignment page modal or inside Essay Checker.
-2. Text extracted and (if large) truncated to 50,000 chars.
-3. Passed to Essay Checker via sessionStorage handoff.
-
-Future ideas: OCR for images, server-side parsing, annotations, plagiarism scan.
-
-## Internationalization (i18n)
-
-Implemented via lightweight context provider `src/lib/i18n.tsx`.
-
-Languages:
-- English (en)
-- Bahasa Melayu (ms)
-- Tamil (ta)
-- 中文 (zh)
-- ภาษาไทย (th)
-- Bahasa Indonesia (id)
-
-Select language on the Language Selection page (persists in `localStorage`). Use the `useI18n` hook:
-
-```tsx
-import { useI18n } from '@/lib/i18n';
-const { t } = useI18n();
-return <h1>{t('dashboard.title')}</h1>;
-```
-
-Add a key: extend all dictionaries in `i18n.tsx`, then call `t('your.key')`.
+Proprietary. All rights reserved
