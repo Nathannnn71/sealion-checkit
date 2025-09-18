@@ -5,21 +5,20 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo "Node: $(node -v) | NPM: $(npm -v)"
-      - echo Installing dependencies...
-      - |
-        if [ -f package-lock.json ]; then
-          npm ci --legacy-peer-deps
-        else
-          npm install --legacy-peer-deps
-        fi
+      - echo Listing repo root
+      - ls -la
+      - echo Node and NPM versions
+      - node -v
+      - npm -v
+      - echo Installing dependencies
+      - npm install --legacy-peer-deps
   build:
     commands:
-      - echo Building the React app...
+      - echo Building the app
       - npm run build
   post_build:
     commands:
-      - echo "Build completed on $(date)"
+      - echo Build completed
 
 artifacts:
   files:
