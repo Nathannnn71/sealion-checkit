@@ -14,57 +14,199 @@ interface FeedbackItem {
   text?: string; // For dynamic feedback from AI analysis
 }
 
-// Secure function to call Supabase Edge Function (which handles AWS SDK internally)
-async function analyzeEssaySecurely(essayText: string) {
+interface GrammarIssue {
+  type?: string; // e.g., Agreement, Tense, Word Choice
+  message?: string; // brief description of the error
+  sentence?: string; // sentence or fragment containing the error
+  suggestion?: string; // how to fix
+}
+
+interface AnalysisResult {
+  strengths: string[];
+  weaknesses: string[];
+  suggestions: string[];
+  grammar?: {
+    overallScore?: number; // 0-100
+    issues?: GrammarIssue[];
+  };
+  success: boolean;
+}
+
+// Builds a structured meta-prompt to guide the model to evaluate essays in ASEAN languages
+function buildEssayPrompt(essayText: string): string {
+  return `You are an academic essay evaluation assistant that analyzes essays written in multiple ASEAN languages (such as English, Malay, Indonesian, Filipino, Thai, Vietnamese, Lao, Khmer, Burmese, etc.). Each language may have its own unique grammar, sentence structure, and academic writing style. Your task is to analyze the essay according to the following framework and provide feedback clearly and constructively.
+
+Framework to follow:
+1. Introduction
+- Does the essay have clear and relevant opening sentences?
+- Does it capture attention by (a) stating the importance of the subject, (b) mentioning previous work, or (c) pointing out the absence of work?
+- Is there a clearly focused thesis sentence relevant to the title?
+- Is there a plan of development that outlines the structure of the essay and signals how the ideas will unfold?
+
+2. Body
+- Are the arguments developed in line with the plan of development?
+- Does each paragraph have a topic sentence?
+- Are there enough supporting details for each point?
+- Are illustrations and examples brief and to the point?
+- Are transitions smooth and signaled with appropriate discourse markers (e.g., "in addition," "furthermore," "however")?
+- Has the writer incorporated sources effectively (summary, paraphrase, short quotations)?
+- Are references acknowledged both in the text and at the end?
+
+3. Conclusion
+- Does the conclusion restate and round off the main ideas?
+- Does it summarize the results/findings?
+- Does it provide comments, implications, or suggestions?
+
+4. Grammar and Editing
+- Are tenses used correctly?
+- Do subjects and verbs agree?
+- Are clauses used correctly (e.g., avoiding “although…but” in the same sentence)?
+- Is the vocabulary academic, precise, and formal?
+- Are nouns, pronouns, adjectives, adverbs, and verbs used appropriately for academic writing?
+- Is there a balance of sentence types (short/long, simple/complex)?
+- Are spelling, typing, and grammar errors avoided?
+- Are references formatted correctly?
+
+Output Requirements:
+- Provide structured feedback under each section (Introduction, Body, Conclusion, Grammar & Editing).
+- Clearly separate Strengths, Weaknesses, and Suggestions.
+- Highlight strengths and weaknesses with short quoted examples from the essay when relevant.
+- Provide practical improvement suggestions in a constructive tone.
+- If the essay is in a non-English ASEAN language, consider the unique grammar and academic conventions of that language when giving feedback and write your feedback in the same language as the essay whenever possible.
+
+Important: Also include a compact JSON summary for UI consumption, with this exact shape (MANDATORY – never omit any top-level key below):
+{
+  "strengths": string[],
+  "weaknesses": string[],
+  "suggestions": string[],
+  "positiveFeedback": string[],
+  "negativeFeedback": string[],
+  "sections": {
+    "Introduction": { "strengths": string[], "weaknesses": string[], "suggestions": string[] },
+    "Body": { "strengths": string[], "weaknesses": string[], "suggestions": string[] },
+    "Conclusion": { "strengths": string[], "weaknesses": string[], "suggestions": string[] },
+    "GrammarEditing": { "strengths": string[], "weaknesses": string[], "suggestions": string[] }
+  },
+  "grammar": {
+    "overallScore": number, // REQUIRED: integer 0–100 overall grammar quality
+    "issues": [ // REQUIRED: can be empty array if no errors; otherwise include concrete items
+      { "type": string, "message": string, "sentence": string, "suggestion": string }
+    ]
+  },
+  "language": string
+}
+Formatting rules for the JSON summary:
+- Do NOT wrap the JSON in code fences (no fenced code blocks).
+- Always include the keys exactly as shown above.
+- Use a single line if possible. If multiple lines, still keep valid JSON.
+
+Always print the full narrative feedback first, then print a separate line that starts with EXACTLY: JSON_SUMMARY= and then the JSON object on the same line.
+
+Essay to analyze:\n\n${essayText}`;
+}
+
+// Primary analysis function: API Gateway/Lambda only
+async function analyzeEssaySecurely(essayText: string): Promise<AnalysisResult> {
   try {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-    
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase configuration missing. Please check environment variables.');
+    const apiGatewayUrl = import.meta.env.VITE_ANALYSIS_API_URL as string | undefined;
+    if (!apiGatewayUrl) {
+      throw new Error('VITE_ANALYSIS_API_URL is not set. Please set it to your API Gateway endpoint.');
     }
 
-    console.log('Calling Supabase Edge Function for essay analysis...');
-    
-    const response = await fetch(`${supabaseUrl}/functions/v1/analyze-essay`, {
+    console.log('Calling API Gateway endpoint:', apiGatewayUrl);
+    const resp = await fetch(apiGatewayUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${supabaseKey}`,
-        'apikey': supabaseKey,
-      },
-      body: JSON.stringify({ essay: essayText }),
+      headers: { 'Content-Type': 'application/json' },
+      // Lambda expects { message, history }
+      body: JSON.stringify({ message: buildEssayPrompt(essayText), history: [] }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      console.error('Supabase Edge Function error:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorData
-      });
-      
-      throw new Error(
-        errorData?.error || 
-        errorData?.details || 
-        `HTTP ${response.status}: ${response.statusText}`
-      );
+    const data = await resp.json().catch(() => null);
+    if (!resp.ok) {
+      console.error('API Gateway/Lambda error:', resp.status, resp.statusText, data);
+      const errMsg = data?.error || data?.message || `HTTP ${resp.status}: ${resp.statusText}`;
+      const details = data?.details ? ` Details: ${data.details}` : '';
+      throw new Error(`${errMsg}${details}`);
     }
 
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error || 'Analysis failed for unknown reason');
+    const botReply: string | undefined = data?.response;
+    if (!botReply) {
+      throw new Error('Invalid response from Lambda: missing "response"');
     }
 
-    return {
-      positiveFeedback: result.positiveFeedback || [],
-      negativeFeedback: result.negativeFeedback || [],
-      success: true
-    };
+    // Prefer parsing the compact JSON summary if present (after JSON_SUMMARY=)
+    // Try to capture JSON summary in various formats: JSON_SUMMARY= {...} or JSON_SUMMARY: {...} with optional code fences
+    let summaryJson: any = undefined;
+    const summaryMatch = botReply.match(/JSON_SUMMARY\s*[:=]\s*([\s\S]*)/i);
+    if (summaryMatch) {
+      try {
+        let raw = summaryMatch[1].trim();
+        // Remove code fences if present
+        raw = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
+        // If the line contains extra narrative after the JSON, try to slice from first { to last }
+        const firstBrace = raw.indexOf('{');
+        const lastBrace = raw.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          raw = raw.slice(firstBrace, lastBrace + 1);
+        }
+        const parsed = JSON.parse(raw);
+        if (parsed) {
+          const strengths = parsed.strengths || parsed.positiveFeedback || [];
+          const weaknesses = parsed.weaknesses || parsed.negativeFeedback || [];
+          const suggestions = parsed.suggestions || [
+            ...(parsed.sections?.Introduction?.suggestions || []),
+            ...(parsed.sections?.Body?.suggestions || []),
+            ...(parsed.sections?.Conclusion?.suggestions || []),
+            ...(parsed.sections?.GrammarEditing?.suggestions || []),
+          ];
+          const grammar = parsed.grammar || undefined;
+          return { strengths, weaknesses, suggestions, grammar, success: true };
+        }
+      } catch {
+        // Fall through
+      }
+    } else {
+      // If entire reply is JSON, still try parsing it for positive/negative arrays
+      try {
+        // Remove code fences around whole message if any
+        let raw = botReply.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '');
+        const parsed = JSON.parse(raw);
+        if (parsed) {
+          const strengths = parsed.strengths || parsed.positiveFeedback || [];
+          const weaknesses = parsed.weaknesses || parsed.negativeFeedback || [];
+          const suggestions = parsed.suggestions || [
+            ...(parsed.sections?.Introduction?.suggestions || []),
+            ...(parsed.sections?.Body?.suggestions || []),
+            ...(parsed.sections?.Conclusion?.suggestions || []),
+            ...(parsed.sections?.GrammarEditing?.suggestions || []),
+          ];
+          const grammar = parsed.grammar || undefined;
+          return { strengths, weaknesses, suggestions, grammar, success: true };
+        }
+      } catch {
+        // Continue to heuristic
+      }
+    }
+
+    // Heuristic split of plain text into positives/negatives
+    const lines = botReply.split(/\r?\n/).map((l: string) => l.trim()).filter(Boolean);
+    const positives: string[] = [];
+    const negatives: string[] = [];
+    for (const line of lines) {
+      const l = line.toLowerCase();
+      if (l.startsWith('positive') || l.startsWith('+') || l.includes('strength')) {
+        positives.push(line.replace(/^\+\s*/, ''));
+      } else if (l.startsWith('negative') || l.startsWith('-') || l.includes('improv') || l.includes('weak')) {
+        negatives.push(line.replace(/^\-\s*/, ''));
+      }
+    }
+    if (positives.length === 0 && negatives.length === 0) {
+      positives.push(botReply);
+    }
+    return { strengths: positives, weaknesses: negatives, suggestions: [], success: true };
 
   } catch (error) {
-    console.error('Error calling Supabase Edge Function:', error);
+    console.error('Error during analysis:', error);
     throw error;
   }
 }
@@ -80,19 +222,10 @@ The right to vote defines our nation as a democracy and should be afforded to al
 
 The primary argument against allowing prisoners the right to vote, which often infringes on the right of another, his or her own rights, is based on a gross generalization. This argument fails to take into account the significant number of prisoners who are incarcerated because of minor crimes or crimes that stem civil moral prohibitions, wrong action to feed but not because it is a punishment against the tenets of moral and just government. You would argue that a mansions insolently achieve the violence toward social patterns.`);
 
-  const [feedback, setFeedback] = useState<FeedbackItem[]>([
-    { id: 'feedback.item1', type: 'positive' },
-    { id: 'feedback.item2', type: 'positive' },
-    { id: 'feedback.item3', type: 'positive' },
-    { id: 'feedback.item4', type: 'positive' },
-    { id: 'feedback.item5', type: 'positive' },
-    { id: 'feedback.item6', type: 'positive' },
-    { id: 'feedback.item7', type: 'negative' },
-    { id: 'feedback.item8', type: 'negative' },
-    { id: 'feedback.item9', type: 'negative' },
-    { id: 'feedback.item10', type: 'negative' },
-    { id: 'feedback.item11', type: 'negative' },
-  ]);
+  const [strengths, setStrengths] = useState<string[]>([]);
+  const [weaknesses, setWeaknesses] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [grammarSummary, setGrammarSummary] = useState<{ overallScore?: number; issues?: GrammarIssue[] }>({});
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,34 +254,18 @@ The primary argument against allowing prisoners the right to vote, which often i
     try {
       console.log('Starting essay analysis...');
       
-      // Call the secure Supabase Edge Function
-      const analysisResult = await analyzeEssaySecurely(essay);
+  // Call Lambda through API Gateway
+  const analysisResult = await analyzeEssaySecurely(essay);
       
       console.log('Analysis result received:', analysisResult);
       
-      if (analysisResult.positiveFeedback && analysisResult.negativeFeedback) {
-        // Convert analysis results to feedback format
-        const newFeedback: FeedbackItem[] = [
-          ...analysisResult.positiveFeedback.map((feedback: string, index: number) => ({
-            id: `positive_${index}`,
-            type: 'positive' as const,
-            text: feedback
-          })),
-          ...analysisResult.negativeFeedback.map((feedback: string, index: number) => ({
-            id: `negative_${index}`,
-            type: 'negative' as const,
-            text: feedback
-          }))
-        ];
-        
-        // Update feedback state with real analysis results
-        setFeedback(newFeedback);
-        setHasAnalyzed(true);
-        
-        toast.success('Essay analysis completed successfully!');
-      } else {
-        throw new Error('Invalid analysis result format');
-      }
+      // Update UI with strengths, weaknesses, suggestions, and grammar
+      setStrengths(analysisResult.strengths || []);
+      setWeaknesses(analysisResult.weaknesses || []);
+      setSuggestions(analysisResult.suggestions || []);
+      setGrammarSummary(analysisResult.grammar || {});
+      setHasAnalyzed(true);
+      toast.success('Essay analysis completed successfully!');
       
     } catch (error) {
       console.error('Analysis failed:', error);
@@ -170,8 +287,8 @@ The primary argument against allowing prisoners the right to vote, which often i
     }
   };
 
-  const positiveFeedback = feedback.filter(item => item.type === 'positive');
-  const negativeFeedback = feedback.filter(item => item.type === 'negative');
+  const positiveFeedback = strengths;
+  const negativeFeedback = weaknesses;
 
   return (
     <div className="min-h-screen bg-background">
@@ -218,7 +335,7 @@ The primary argument against allowing prisoners the right to vote, which often i
                 <strong>Analysis Error:</strong> {error}
                 <br />
                 <span className="text-sm text-muted-foreground mt-1 block">
-                  Please check the Supabase Edge Function logs for more details.
+                  Check your Lambda logs in Amazon CloudWatch for details.
                 </span>
               </AlertDescription>
             </Alert>
@@ -269,43 +386,82 @@ The primary argument against allowing prisoners the right to vote, which often i
             </div>
           )}
 
-          {/* Positive Feedback */}
+          {/* Strengths */}
           {positiveFeedback.length > 0 && (
             <Card className="p-4 mb-6">
               <h2 className="text-lg font-semibold text-success mb-4 flex items-center gap-2">
                 <CheckCircle className="w-5 h-5" />
-                {t('checker.feedback.positive')}
+                Strengths
               </h2>
               <div className="space-y-3">
-                {positiveFeedback.map((item) => (
-                  <div key={item.id} className="flex items-start gap-2">
+                {positiveFeedback.map((text, idx) => (
+                  <div key={`strength_${idx}`} className="flex items-start gap-2">
                     <CheckCircle className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-card-foreground leading-relaxed">
-                      {item.text || t(item.id)}
-                    </p>
+                    <p className="text-sm text-card-foreground leading-relaxed">{text}</p>
                   </div>
                 ))}
               </div>
             </Card>
           )}
 
-          {/* Negative Feedback */}
+          {/* Weaknesses */}
           {negativeFeedback.length > 0 && (
             <Card className="p-4">
               <h2 className="text-lg font-semibold text-destructive mb-4 flex items-center gap-2">
                 <XCircle className="w-5 h-5" />
-                {t('checker.feedback.negative')}
+                Weaknesses
               </h2>
               <div className="space-y-3">
-                {negativeFeedback.map((item) => (
-                  <div key={item.id} className="flex items-start gap-2">
+                {negativeFeedback.map((text, idx) => (
+                  <div key={`weakness_${idx}`} className="flex items-start gap-2">
                     <XCircle className="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-card-foreground leading-relaxed">
-                      {item.text || t(item.id)}
-                    </p>
+                    <p className="text-sm text-card-foreground leading-relaxed">{text}</p>
                   </div>
                 ))}
               </div>
+            </Card>
+          )}
+
+          {/* Suggestions */}
+          {suggestions.length > 0 && (
+            <Card className="p-4 mt-6">
+              <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5" />
+                Suggestions
+              </h2>
+              <div className="space-y-3">
+                {suggestions.map((text, idx) => (
+                  <div key={`suggestion_${idx}`} className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-card-foreground leading-relaxed">{text}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Grammar */}
+          {(grammarSummary.overallScore !== undefined || (grammarSummary.issues && grammarSummary.issues.length > 0)) && (
+            <Card className="p-4 mt-6">
+              <h2 className="text-lg font-semibold mb-2">Grammar</h2>
+              {grammarSummary.overallScore !== undefined && (
+                <p className="text-sm text-muted-foreground mb-4">Overall Grammar Score: <span className="font-medium text-foreground">{grammarSummary.overallScore}</span>/100</p>
+              )}
+              {grammarSummary.issues && grammarSummary.issues.length > 0 && (
+                <div className="space-y-3">
+                  {grammarSummary.issues.map((issue, idx) => (
+                    <div key={`grammar_${idx}`} className="text-sm">
+                      <div className="font-medium">{issue.type || 'Issue'}: {issue.message}</div>
+                      {issue.sentence && (
+                        <div className="mt-1 text-muted-foreground">Sentence: “{issue.sentence}”</div>
+                      )}
+                      {issue.suggestion && (
+                        <div className="mt-1">Suggestion: {issue.suggestion}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </Card>
           )}
         </div>

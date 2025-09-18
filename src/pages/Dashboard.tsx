@@ -2,11 +2,22 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, FileText, Home, Globe, Settings, User } from "lucide-react";
+import { Plus, FileText, Home, Globe, Settings, User, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useI18n } from "@/lib/i18n";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Assignment {
@@ -83,6 +94,13 @@ const Dashboard = () => {
     navigate(`/assignment/${assignmentId}`);
   };
 
+  const handleDeleteAssignment = (assignmentId: string) => {
+    const next = assignments.filter(a => a.id !== assignmentId);
+    persist(next);
+    // Clean up any students persisted for this assignment
+    localStorage.removeItem(`assignment_students_${assignmentId}`);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -119,13 +137,48 @@ const Dashboard = () => {
             >
               <CardContent className="p-6">
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-background/20 rounded-lg flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-accent" />
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-background/20 rounded-lg flex items-center justify-center">
+                        <FileText className="w-6 h-6 text-accent" />
+                      </div>
+                      <div className="text-sm bg-background/20 px-2 py-1 rounded">
+                        {assignment.language}
+                      </div>
                     </div>
-                    <div className="text-sm bg-background/20 px-2 py-1 rounded">
-                      {assignment.language}
-                    </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-primary-foreground/80 hover:text-destructive"
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label="Delete assignment"
+                          title="Delete assignment"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete assignment?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will remove the assignment and any saved student data linked to it. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAssignment(assignment.id);
+                            }}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                   
                   <div>
