@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Globe, Settings, User, Home, AlertCircle } from "lucide-react";
+import { CheckCircle, XCircle, ChevronLeft, ChevronRight, Home, AlertCircle } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { toast } from "sonner";
+import HeaderBar from "@/components/HeaderBar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface FeedbackItem {
@@ -293,24 +294,7 @@ The primary argument against allowing prisoners the right to vote, which often i
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-primary text-primary-foreground px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Home 
-              className="w-6 h-6 cursor-pointer hover:text-accent transition-colors" 
-              onClick={() => navigate('/dashboard')} 
-              aria-label="Go to Dashboard" 
-            />
-            <h1 className="text-xl font-semibold">Checkit ✓</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <Globe className="w-5 h-5" />
-            <Settings className="w-5 h-5" />
-            <span className="text-sm">dinoTeacher</span>
-            <User className="w-5 h-5" />
-          </div>
-        </div>
-      </header>
+      <HeaderBar />
 
       {/* Main Content */}
       <div className="flex h-[calc(100vh-80px)]">
