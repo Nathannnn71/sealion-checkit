@@ -2,19 +2,23 @@ version: 0.2
 
 phases:
   install:
-    runtime-version:
+    runtime-versions:
       nodejs: 18
     commands:
-      - ehco Installing dependencies...
-      - npm ci --legacy-peer-deps
-
-    build:
-      commands:
-        - echo Building the React app..
-        - npm run build
+      - echo Installing dependencies...
+      - cd sealion-scribe
+      - npm install
+  build:
+    commands:
+      - echo Building the app...
+      - cd sealion-scribe
+      - npm run build
+  post_build:
+    commands:
+      - echo Build completed on `date`
 
 artifacts:
   files:
     - '**/*'
-  base-directory: build
-  discard-paths: no  
+  base-directory: sealion-scribe/dist
+  discard-paths: no
